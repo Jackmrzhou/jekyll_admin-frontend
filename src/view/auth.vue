@@ -10,7 +10,7 @@
         <el-col :xs="1" :lg="9" :xl="10">&nbsp;</el-col>
         <el-col :xs="22" :lg="6" :xl="4">
           <el-card class="login-box">
-              <el-tabs v-model="activeTab">
+              <el-tabs>
                 <el-tab-pane label="username&password">
                   <el-form ref="loginForm" :model="normalForm" :rules="rules">
                     <el-form-item label="username" prop="username">
@@ -79,20 +79,50 @@ export default {
     methods: {
       onSubmit() {
         this.$refs.loginForm.validate((valid) => {
-          var redirect = getRedirect()
-          this.axios.post(loginUrl, normalForm).then((resp) => {
-            console.log(resp)
+          var redirect = this.getRedirect()
+          this.axios.post(this.loginUrl+'/user', this.normalForm).then((resp) => {
+            var data = resp.data
+            if (data.code) {
+              this.$notify({
+                title: "result",
+                message: data.message,
+                type: "error"
+              })
+            } else {
+              this.$cookies.set("token", data.token)
+              this.$router.push(redirect)
+            }
           }).catch((err) => {
+            this.$notify({
+              title:"result",
+              message: "error",
+              type: "error"
+            })
             console.log(err)
           })
         })
       }, 
       tokenOnSubmit() {
         this.$refs.tokenLoginForm.validate((valid) => {
-          var redirect = getRedirect()
-          this.axios.post(loginUrl, tokenForm).then((resp) => {
-            console.log(resp)
+          var redirect = this.getRedirect()
+          this.axios.post(this.loginUrl+'/token', this.tokenForm).then((resp) => {
+            var data = resp.data
+            if (data.code) {
+              this.$notify({
+                title: "result",
+                message: data.message,
+                type: "error"
+              })
+            } else {
+              this.$cookies.set("token", data.token)
+              this.$router.push(redirect)
+            }
           }).catch((err) => {
+            this.$notify({
+              title:"result",
+              message: "error",
+              type: "error"
+            })
             console.log(err)
           })
         })

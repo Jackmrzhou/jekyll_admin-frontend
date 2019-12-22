@@ -23,7 +23,7 @@ axios.interceptors.response.use(
     if (response.data.code === 4001) {
       // catch unauthorized situation
       router.push({
-        path: '/admin/auth',
+        path: '/auth',
         query: {redirect: router.history.current.fullPath}
       })
       return Promise.reject(response)
@@ -36,8 +36,8 @@ axios.interceptors.response.use(
 
 router.beforeEach((to, from, next) => {
   if (to.meta.login) {
-    if (!this.$cookies.isKey("token")) {
-      this.$router.push('/admin/login')
+    if (!router.app.$cookies.isKey("token")) {
+      router.push('/auth')
     }else {
       next()
     }

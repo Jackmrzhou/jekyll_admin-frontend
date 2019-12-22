@@ -8,21 +8,21 @@ Vue.use(Router)
 export default new Router({
   routes: [
     {
-      path: '/admin',
+      path: '/',
       name: 'home',
       component: home, 
       meta: {
         login: true
       }
     }, {
-      path: '/admin/post',
+      path: '/post',
       name: 'post',
       component: post, 
       meta: {
         login: true
       }
     }, {
-      path: '/admin/auth',
+      path: '/auth',
       name: 'auth',
       component: auth
     }
