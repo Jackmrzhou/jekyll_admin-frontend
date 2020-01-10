@@ -22,7 +22,7 @@
                     </el-table-column>
                     <el-table-column label="operation" width="100">
                         <template slot-scope="scope">
-                            <el-button @click="update(scope)" type="text" size="medium">Edit</el-button>
+                            <el-button @click="update(scope)" type="text" size="medium" :loading="activeBtn == scope.$index">Edit</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
@@ -47,9 +47,16 @@
                         <mavon-editor v-model="PostForm.content"/>
                     </el-form-item>
                     <el-form-item style="text-align: center;">
-                        <el-button @click="onSubmit">
-                            Post!
-                        </el-button>
+                        <div v-if="!isUpdate">
+                            <el-button @click="onSubmit" :loading="postLoading">
+                                Post!
+                            </el-button>
+                        </div>
+                        <div v-else>
+                            <el-button @click="onUpdate" :loading="postLoading">
+                                Update!
+                            </el-button>
+                        </div>
                     </el-form-item>
                 </el-form>
             </el-tab-pane>
@@ -63,83 +70,19 @@ export default {
     name: 'PostMain',
     data() {
         return {
-            activeName: 'write',
+            activeBtn: -1,
+            activeName: 'update',
             categories: '',
+            isUpdate: false,
+            postLoading: false,
             PostForm: {
                 title: '',
                 date: '',
                 content: ''
             },
-            postsList: [{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-11",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            },{
-                date: "2019-12-19",
-                title: "what a wonderful world",
-                beginning: "what a wonderful world..."
-            }],
-            postUrl: '/api/post'
+            postsList: [],
+            postUrl: '/api/post',
+            listApi: '/api/post/list'
         }
     }, 
     computed: {
@@ -151,11 +94,33 @@ export default {
         }
     },
     methods: {
-        update(row) {
-            console.log(row)
+        listLoading() {
+            this.axios.get(this.listApi).then((resp) => {
+                var data = resp.data
+                if(data.code) {
+                    this.$notify({
+                        title: "result",
+                        message: data.message,
+                        type: "error"
+                    })
+                } else {
+                    this.postsList = data.data
+                }
+            }).catch((err)=>{
+                this.$notify({
+                    title:"loading error",
+                    message: "error",
+                    type: "error"
+                })
+                console.log(err)
+            })
         },
-        onSubmit() {
-            //console.log(this.PostForm)
+        constructFileName(date, title){
+            title = title.replace(/\s+/g, '-')
+            return date + '-' + title + '.md'
+        },
+
+        constructPostObj(){
             var raw_content = "---\n"
             raw_content += "title: " + this.PostForm.title + "\ncategories:\n"
             for (var cate of this.cate_tags) {
@@ -164,15 +129,99 @@ export default {
             raw_content += "feature_image: \"https://picsum.photos/2560/600?image=872\"\n---\n"
             raw_content += this.PostForm.content
 
-            this.PostForm.title = this.PostForm.title.replace(/\s+/g, '-');
-            //console.log(this.PostForm.title)
-            var file_name = this.PostForm.date+'-'+this.PostForm.title+".md"
-
-            var postObj = {
+            var file_name = this.constructFileName(this.PostForm.date, this.PostForm.title)
+            return  {
                 file_name: file_name,
                 content: raw_content
             }
+        },
+        update(scope) {
+            this.activeBtn = scope.$index
+            var postContent = ""
+            var filename = this.constructFileName(scope.row.date, scope.row.title)
+            this.axios.get(this.postUrl, {params:{filename: filename}}).then((resp)=>{
+                var data = resp.data
+                if (data.code) {
+                    this.$notify({
+                        title: "result",
+                        message: data.message,
+                        type: "error"
+                    })
+                }else {
+                    postContent = data.content
+                    this.activeName = "write"
+                    this.PostForm.title = scope.row.title
+                    this.PostForm.date = scope.row.date
+                    var l = postContent.split("---")
+                    console.log(l)
+                    this.PostForm.content = l[2].substring(1, l[2].length)
+                    l = l[1].replace(/(?:\r\n|\r|\n)/g, ':').split(':')
+                    l = l.map(s => s.trim())
+                    l = l.filter(s => s !=="")
+                    l = [...new Set(l)]
+                    for (var i = 0; i < l.length; i++){
+                        if (l[i] !== "categories"){
+                            continue
+                        }
 
+                        for (i=i+1; i < l.length; i++){
+                            if (l[i] !== "feature_image")
+                                this.categories += l[i].substring(1, l[i].length)+","
+                            else 
+                                break
+                        }
+                        this.categories = this.categories.substring(0, this.categories.length-1)
+                        break
+                    }
+                    this.isUpdate = true
+                    this.activeBtn = -1
+                }
+            }).catch((err) => {
+                this.$notify({
+                    title:"post error",
+                    message: "error",
+                    type: "error"
+                })
+                console.log(err)
+            })
+        },
+        onUpdate() {
+            this.postLoading = true
+            var postObj = this.constructPostObj()
+            this.axios.patch(this.postUrl, postObj).then((resp) => {
+                var data = resp.data
+                if (data.code) {
+                    this.$notify({
+                        title: "result",
+                        message: data.message,
+                        type: "error"
+                    })
+                } else {
+                    this.$notify({
+                        title: "result",
+                        message: "operation succeeded",
+                        type: "success"
+                    })
+                    this.$refs.CreatePost.resetFields()
+                    this.PostForm.content = ""
+                    this.categories = ''
+                    this.isUpdate = false
+                }
+            }).catch((err) => {
+                this.$notify({
+                    title:"update error",
+                    message: "error",
+                    type: "error"
+                })
+                console.log(err)
+            })
+
+            this.postLoading = false
+        },
+        onSubmit() {
+            //console.log(this.PostForm
+            var postObj = this.constructPostObj()
+            this.postLoading = true
             this.axios.post(this.postUrl, postObj).then((resp) => {
                 var data = resp.data
                 if (data.code) {
@@ -199,7 +248,12 @@ export default {
                 })
                 console.log(err)
             })
+
+            this.postLoading = false
         }
+    },
+    created() {
+        this.listLoading()
     }
 }
 </script>
